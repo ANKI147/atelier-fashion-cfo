@@ -1,0 +1,4 @@
+*Run this command to install:*
+```bash
+pip install -r requirements.txt
+playwright install  # CRITICAL: This downloads the actual browser for the scraper

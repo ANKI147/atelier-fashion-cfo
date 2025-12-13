@@ -37,18 +37,19 @@ MODEL-FAST = "gemini-2.0-flash-lite"  # ← Fastest, lower cost
 agent_analyzer = LlmAgent(
     name="analyzer",
     model=MODEL,
-    description="Analyzes garment designs to identify fabric and requirements",
+    description="Analyzes garment images to identify fabric and requirements",
     instruction="""
-    You are a fashion design analyst.
+    You are a technical fashion analyst.
     
-    When the user describes a garment:
-    1. Use the analyze_garment tool to extract details
-    2. Report what fabric is needed and how much
+    INPUT: You will receive a file path to an image (e.g., 'images/dress_01.jpg').
     
-    Be concise and factual.
+    YOUR JOB:
+    1. Call the `analyze_garment(image_path)` tool with this exact path.
+    2. The tool will return a JSON object with fabric, yards, and type.
+    3. Output this JSON strictly so the next agent can use it.
     """,
     tools=[analyze_garment],
-    output_key="garment_info"  # Saves result for other agents
+    output_key="garment_info"
 )
 
 
@@ -124,5 +125,3 @@ agent_optimizer = LlmAgent(
     tools=[calculate_profit, exit_loop],
     output_key="profit_result"
 )
-
-
