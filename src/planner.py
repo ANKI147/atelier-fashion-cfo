@@ -38,7 +38,7 @@ agent_analyzer = Agent(
     ),
     description="Analyzes garment designs to identify fabric and requirements",
     instruction="""
-    You are a fashion design analyst.
+    You are a technical fashion analyst.
     
     Your goal is to deconstruct a fashion image into a precise Bill of Materials (BOM) by analyzing visual cues like physics, lighting, and structure.
 
@@ -77,7 +77,7 @@ agent_analyzer = Agent(
     **TONE:** Be concise, technical, and factual. No fluff.
 """,
     tools=[analyze_garment],
-    output_key="garment_info"  # Saves result for other agents
+    output_key="garment_info"
 )
 
 print("Agent Analyzer initialized.")
@@ -163,5 +163,3 @@ agent_optimizer = Agent(
     tools=[calculate_profit, exit_loop],
     output_key="profit_result"
 )
-
-

@@ -40,3 +40,4 @@ Welcome! This repository is your starting point for the **Agentic AI App Hackath
   This evaluates the project's potential to address a meaningful problem, contribute positively to society, or offer a genuinely innovative and unique solution. Judges will consider the originality of the idea, its potential real‑world applicability, and its ability to solve a challenge in a new or impactful way.
 
 
+The dataset/ folder contains a small, curated set of fashion sketches and garment images used for demo and evaluation purposes. These images simulate designer uploads and are not used as labeled training data.
