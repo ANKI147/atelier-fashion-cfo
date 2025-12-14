@@ -114,3 +114,25 @@ def save_market_price(
     
     return f"✅ Market data saved: {garment_name} sells for ${average_price:.2f} avg ({trend_status})"
 
+def save_optimization_flag(
+    needs_optimization: str,
+    tool_context: ToolContext
+) -> str:
+    """
+    Saves optimization flag to session state.
+    
+    Args:
+        needs_optimization: Boolean indicating if optimization is needed.
+    
+    Returns:
+        Confirmation message
+    """
+    tool_context.state["needs_optimization"] = needs_optimization
+
+    if needs_optimization.lower() == "initial":
+        status = "not yet determined"
+    elif needs_optimization.lower() == "needed":    
+        status = "needed"
+    elif needs_optimization.lower() == "not needed":
+        status = "not needed"    
+    return f"✅ Optimization flag saved: Optimization is {status}."

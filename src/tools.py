@@ -58,47 +58,68 @@ def find_cheaper_alternative(
 # ============================================================================
 # TOOL 5: Calculate Profit (Agent D)
 # ============================================================================
-def calculate_profit(
-    tool_context: ToolContext,
-    labor_cost: float = 50.0
-) -> dict:
+import json
+
+
+def _coerce_json_dict(value):
     """
-    Calculates profit using data from session state.
-    Reads fabric_pricing and market_data saved by other agents.
-    
-    Args:
-        labor_cost: Cost of labor (default $50)
-    
-    Returns:
-        Profit analysis dictionary
+    Your agents currently store fabric_cost / market_price like:
+      "{\"fabric_name\": \"Wool Suiting\", ... }"
+    i.e., a JSON-encoded dict stored as a Python string.
+
+    This helper accepts either:
+    - dict (already parsed)
+    - JSON string (your current output)
+    and returns a dict or {}.
     """
-    # Read from session state (saved by Agents B and C)
-    fabric_data = tool_context.state.get("fabric_pricing", {})
-    market_data = tool_context.state.get("market_data", {})
-    
-    fabric_cost = fabric_data.get("total_cost", 0)
-    selling_price = market_data.get("average_price", 0)
-    
-    # Calculate
-    total_cost = fabric_cost + labor_cost
+    if isinstance(value, dict):
+        return value
+    if isinstance(value, str):
+        s = value.strip()
+        try:
+            obj = json.loads(s)
+            return obj if isinstance(obj, dict) else {}
+        except Exception:
+            return {}
+    return {}
+
+
+def calculate_profit(tool_context: ToolContext, labor_cost: float = 50.0) -> dict:
+    # Pull the actual agent outputs from state (output_key results)
+    fabric_cost_raw = tool_context.state.get("fabric_cost", {})
+    market_price_raw = tool_context.state.get("market_price", {})
+
+    fabric_cost = _coerce_json_dict(fabric_cost_raw)
+    market_price = _coerce_json_dict(market_price_raw)
+
+    # --- Fabric math (Agent B output) ---
+    price_per_yard = float(fabric_cost.get("price_per_yard", 0) or 0)
+    yards_needed = float(fabric_cost.get("yards_needed", 0) or 0)
+    fabric_total_cost = round(price_per_yard * yards_needed, 2)
+
+    # --- Revenue math (Agent C output) ---
+    selling_price = float(market_price.get("average_price", 0) or 0)
+
+    # --- Profitability ---
+    total_cost = fabric_total_cost + labor_cost
     profit = selling_price - total_cost
-    margin = profit / selling_price if selling_price > 0 else 0
-    
+    margin = (profit / selling_price) if selling_price > 0 else 0.0
+
     result = {
-        "fabric_cost": fabric_cost,
+        "fabric_cost": fabric_total_cost,
         "labor_cost": labor_cost,
         "total_cost": round(total_cost, 2),
         "selling_price": selling_price,
         "profit": round(profit, 2),
         "profit_margin_percent": round(margin * 100, 1),
         "target_margin_percent": TARGET_PROFIT_MARGIN * 100,
-        "is_profitable": margin >= TARGET_PROFIT_MARGIN
+        "is_profitable": margin >= TARGET_PROFIT_MARGIN,
     }
-    
-    # Save to state for reference
+
+    # Save to state for the optimizer / debugging
     tool_context.state["profit_analysis"] = result
-    
     return result
+
 
 
 # ============================================================================
