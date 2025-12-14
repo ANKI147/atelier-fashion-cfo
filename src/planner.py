@@ -3,17 +3,18 @@ from google.adk.models.google_llm import Gemini
 from google.adk.runners import InMemoryRunner
 from google.adk.tools import google_search, exit_loop
 from google.genai import types 
+from dotenv import load_dotenv
+
+load_dotenv()  # Load environment variables from .env file
+
 # Import our tools
 from .tools import (
-    find_cheaper_alternative,
     calculate_profit,
     TARGET_PROFIT_MARGIN
 )
 
 from .memory import (
     save_garment_specs,
-    save_fabric_cost,
-    save_market_price
 )
 
 
@@ -25,9 +26,9 @@ retry_config=types.HttpRetryOptions(
 )
 
 
-MODEL = "gemini-2.0-flash"  # ← Best for free tier!
+MODEL = "gemini-2.5-pro"  # ← Best for free tier!
 
-MODEL_FAST = "gemini-2.0-flash-lite"  # ← Fastest, lower cost
+MODEL_FAST = "gemini-2.5-flash"  # ← Fastest, lower cost
 # ============================================================================
 # AGENT A: The Analyzer
 # ============================================================================
@@ -63,21 +64,23 @@ agent_analyzer = Agent(
         * Estimate Yardage: Assume standard 60-inch fabric width. (e.g., A full circle skirt requires 4x more fabric than a pencil skirt).
 
     **PHASE 2: DATA EXTRACTION**
-    Based on your reasoning, call the `analyze_garment` tool. You must populate it with these specific details:
+    Based on your reasoning, call the `save_garment_specs` tool. You must populate the garment_info ouput with a summary of the details below : 
     
-    * `garment_type`: Specify if the garment is a top, bottom, dress, outerwear, or accessory.
-    * `garment_name`: Use specific industry terminology (e.g., "Bias-Cut Slip Dress" NOT just "Dress").
-    * `silhouette`: Describe the shape (e.g., "Flowing A-line", "Mermaid", "Sheath").
-    * `length`: "Mini", "Midi", or "Maxi".
-    * `sleeves`: "Sleeveless", "Cap", "Long", etc.
-    * `neckline`: "V-neck", "Boat", "Cowl", etc.
-    * `primary_fabric`: The specific textile name. **RULE:** If ambiguous, default to the *luxury* option (e.g., assume "Silk" over "Polyester") so the financial optimizer has room to cut costs later.
-    * `fabric_confidence`: A float between 0.0 and 1.0 indicating how sure you are based on visual cues.
-    * `estimated_yardage`: A realistic estimate + 10% waste buffer (float).
-    * `construction_complexity`: "Low", "Medium", or "High".
-    * `reasoning_summary`: A one-sentence explanation of why you chose this fabric (e.g., "Identified Silk Charmeuse due to high specular highlights and fluid liquid-like drape.").
+    * garment_type: Specify if the garment is a top, bottom, dress, outerwear, or accessory.
+    * garment_name: Use specific industry terminology (e.g., "Bias-Cut Slip Dress" NOT just "Dress").
+    * silhouette: Describe the shape (e.g., "Flowing A-line", "Mermaid", "Sheath").
+    * length: "Mini", "Midi", or "Maxi".
+    * sleeves: "Sleeveless", "Cap", "Long", etc.
+    * neckline: "V-neck", "Boat", "Cowl", etc.
+    * primary_fabric: The specific textile name. **RULE:** If ambiguous, default to the *luxury* option (e.g., assume "Silk" over "Polyester") so the financial optimizer has room to cut costs later.
+    * fabric_confidence: A float between 0.0 and 1.0 indicating how sure you are based on visual cues.
+    * estimated_yardage: A realistic estimate + 10% waste buffer (float).
+    * construction_complexity: "Low", "Medium", or "High".
+    * reasoning_summary: A one-sentence explanation of why you chose this fabric (e.g., "Identified Silk Charmeuse due to high specular highlights and fluid liquid-like drape.").
+    
 
     **TONE:** Be concise, technical, and factual. No fluff.
+
 """,
     tools = [save_garment_specs],
     output_key="garment_info"
@@ -101,24 +104,27 @@ agent_sourcer = Agent(
     You are a fabric procurement specialist.
 
     **Your Task:**
-    1. Read the garment specs from state: {garment_info}
+    1. Read the garment info and specs from state: {garment_info}, {garment_specs}.
     2. Use Google Search to find wholesale fabric prices
-    - Search for: "wholesale [fabric name] fabric price per yard"
-    3. Extract the price from search results
-    4. Call save_fabric_cost with:
-    - fabric_name: the fabric you searched
-    - price_per_yard: price you found (estimate if unclear, use $5-15 range)
-    - yards_needed: from garment specs
-    - source: where you found the price
+    - Search for: "wholesale [fabric name] fabric price per yard".
+    3. Extract the price from search results.
 
-    **If optimization is needed:**
-    - Call find_cheaper_alternative first
-    - Then search for the alternative fabric price
-    - Save the NEW cheaper fabric cost
+    4. **FINAL ANSWER FORMAT (MANDATORY)**  
+    Return **only** a single Python dictionary literal with exactly these keys:
+    - `fabric_name`: the fabric you searched.
+    - `price_per_yard`: numeric price you found (estimate if unclear, use 5–15 range).
+    - `yards_needed`: numeric value from garment specs.
+    - `source`: short string describing where you found the price.
 
+    Rules:
+    - The final response must be a single line starting with `{` and ending with `}`.
+    - Do **not** include backticks,backslashes (\),Markdown, code fences, or the word "json".
+    - Do **not** add explanations, prose, or extra keys.
+    - Example of the required style (structure only):
+    {"fabric_name": "Wool Suiting", "price_per_yard": 16.0, "yards_needed": 2.75, "source": "Fashion Fabrics Club"}
     Be practical - if search results are vague, make a reasonable estimate.
     """,
-    tools=[google_search, save_fabric_cost, find_cheaper_alternative],
+    tools=[google_search],
     output_key="fabric_cost"
 )
 
@@ -139,20 +145,30 @@ agent_market = Agent(
     You are a fashion market analyst.
 
     **Your Task:**
-    1. Read the garment info from state: {garment_info}
+    1. Read the garment info and specs from state: {garment_info}, {garment_specs}.
     2. Use Google Search to find retail prices
-    - Search for: "[garment name] price retail" or "[garment name] buy online"
-    3. Extract pricing information from results
-    4. Call save_market_price with:
-    - garment_name: what you searched
-    - average_price: typical selling price (estimate $80-200 for dresses)
-    - price_range_low: cheapest you found
-    - price_range_high: most expensive
-    - trend_status: "High Demand", "Medium Demand", or "Low Demand"
+    - Search for: "[garment name] price retail" or "[garment name] buy online".
+    3. Extract pricing information from results.
 
-    Be practical - make reasonable estimates from search snippets.
+    4. **FINAL ANSWER FORMAT (MANDATORY)**  
+    Return **only** a single Python dictionary literal with exactly these keys:
+    - `garment_name`: what you searched.
+    - `average_price`: typical selling price (estimate 80–200 for dresses).
+    - `price_range_low`: lowest price you found.
+    - `price_range_high`: highest price you found.
+    - `trend_status`: one of "High Demand", "Medium Demand", or "Low Demand".
+
+    Rules:
+    - The final response must be a single line starting with `{` and ending with `}`.
+    - Do **not** include backticks, backslashes(\) , Markdown, code fences, or the word "json".
+    - Do **not** add explanations, prose, or extra keys.
+    - Example of the required style (structure only):
+    {"garment_name": "Glen Plaid Sheath Dress", "average_price": 165.0,
+    "price_range_low": 79.99, "price_range_high": 280.0, "trend_status": "Medium Demand"}
+
+    Be practical – make reasonable estimates from search snippets.
     """,
-    tools=[google_search, save_market_price],
+    tools=[google_search],
     output_key="market_price"
 )
 
@@ -169,7 +185,7 @@ agent_optimizer = Agent(
         retry_options=retry_config
     ),
     description="Calculates profitability and makes decisions",
-    instruction=f"""
+    instruction="""
     You are a financial analyst (CFO).
 
     **Your Task:**

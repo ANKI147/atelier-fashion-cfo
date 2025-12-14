@@ -6,6 +6,11 @@ from google.adk.tools import ToolContext
 def save_garment_specs(
     garment_type: str,
     garment_name: str,
+    silhoutte: str,
+    length: str,
+    sleeves: str,
+    neckline: str,
+    fabric_confidence: float,   
     primary_fabric: str,
     estimated_yardage: float,
     construction_complexity: str,
@@ -28,6 +33,11 @@ def save_garment_specs(
     tool_context.state["garment_specs"] = {
         "garment_type": garment_type,
         "garment_name": garment_name,
+        "silhoutte": silhoutte,
+        "length": length,
+        "sleeves": sleeves ,
+        "neckline": neckline,
+        "fabric_confidence": fabric_confidence,   
         "primary_fabric": primary_fabric,
         "estimated_yardage": estimated_yardage,
         "construction_complexity": construction_complexity

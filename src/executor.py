@@ -1,4 +1,7 @@
 from google.adk.agents import SequentialAgent, ParallelAgent, LoopAgent
+from dotenv import load_dotenv
+
+load_dotenv()  # Load environment variables from .env file
 
 # Import agents from planner
 from .planner import (
