@@ -13,14 +13,17 @@ from .executor import (
     optimization_loop
 )
 
-from .memory import Memory, session_memory
+
 
 from .tools import (
-    analyze_garment,
-    get_fabric_price,
-    get_market_price,
-    find_cheaper_fabric,
+    find_cheaper_alternative,
     calculate_profit,
     TARGET_PROFIT_MARGIN
+)
+
+from .memory import (
+    save_garment_specs,
+    save_fabric_cost,
+    save_market_price
 )
 

@@ -1,16 +1,19 @@
 from google.adk.agents import Agent
-from google.adk.models.google_llm import GEMINI
+from google.adk.models.google_llm import Gemini
 from google.adk.runners import InMemoryRunner
-from google.adk.tools import exit_loop
+from google.adk.tools import google_search, exit_loop
 from google.genai import types 
 # Import our tools
 from .tools import (
-    analyze_garment,
-    get_fabric_price,
-    get_market_price,
-    find_cheaper_fabric,
+    find_cheaper_alternative,
     calculate_profit,
     TARGET_PROFIT_MARGIN
+)
+
+from .memory import (
+    save_garment_specs,
+    save_fabric_cost,
+    save_market_price
 )
 
 
@@ -31,8 +34,8 @@ MODEL_FAST = "gemini-2.0-flash-lite"  # ← Fastest, lower cost
 # Job: Look at the garment and figure out what it needs
 
 agent_analyzer = Agent(
-    name="Image Analyzer Agent",
-    model= GEMINI(
+    name="image_analyzer",
+    model= Gemini(
         model = MODEL,
         retry_options=retry_config
     ),
@@ -76,7 +79,7 @@ agent_analyzer = Agent(
 
     **TONE:** Be concise, technical, and factual. No fluff.
 """,
-    tools=[analyze_garment],
+    tools = [save_garment_specs],
     output_key="garment_info"
 )
 
@@ -89,21 +92,33 @@ print("Agent Analyzer initialized.")
 
 agent_sourcer = Agent(
     name="sourcer",
-    model=GEMINI(
+    model=Gemini(
         model = MODEL_FAST,
         retry_options=retry_config
     ),
-    description="Finds fabric prices from wholesalers",
+    description="Finds fabric prices from wholesalers using Google Search",
     instruction="""
     You are a fabric procurement specialist.
-    
-    Using the garment info from {garment_info}:
-    1. Use get_fabric_price to find the cost
-    2. If optimization is needed, use find_cheaper_fabric
-    
-    Report the total fabric cost.
+
+    **Your Task:**
+    1. Read the garment specs from state: {garment_info}
+    2. Use Google Search to find wholesale fabric prices
+    - Search for: "wholesale [fabric name] fabric price per yard"
+    3. Extract the price from search results
+    4. Call save_fabric_cost with:
+    - fabric_name: the fabric you searched
+    - price_per_yard: price you found (estimate if unclear, use $5-15 range)
+    - yards_needed: from garment specs
+    - source: where you found the price
+
+    **If optimization is needed:**
+    - Call find_cheaper_alternative first
+    - Then search for the alternative fabric price
+    - Save the NEW cheaper fabric cost
+
+    Be practical - if search results are vague, make a reasonable estimate.
     """,
-    tools=[get_fabric_price, find_cheaper_fabric],
+    tools=[google_search, save_fabric_cost, find_cheaper_alternative],
     output_key="fabric_cost"
 )
 
@@ -115,19 +130,29 @@ agent_sourcer = Agent(
 
 agent_market = Agent(
     name="market_researcher",
-    model= GEMINI(
+    model= Gemini(
         model = MODEL_FAST,
         retry_options=retry_config
     ),
-    description="Researches market prices for similar garments",
+    description="Researches market prices for similar garments using Google Search",
     instruction="""
-    You are a market research analyst.
-    
-    Using the garment info from {garment_info}:
-    1. Use get_market_price to find competitor prices
-    2. Report the average selling price
+    You are a fashion market analyst.
+
+    **Your Task:**
+    1. Read the garment info from state: {garment_info}
+    2. Use Google Search to find retail prices
+    - Search for: "[garment name] price retail" or "[garment name] buy online"
+    3. Extract pricing information from results
+    4. Call save_market_price with:
+    - garment_name: what you searched
+    - average_price: typical selling price (estimate $80-200 for dresses)
+    - price_range_low: cheapest you found
+    - price_range_high: most expensive
+    - trend_status: "High Demand", "Medium Demand", or "Low Demand"
+
+    Be practical - make reasonable estimates from search snippets.
     """,
-    tools=[get_market_price],
+    tools=[google_search, save_market_price],
     output_key="market_price"
 )
 
@@ -139,26 +164,31 @@ agent_market = Agent(
 
 agent_optimizer = Agent(
     name="optimizer",
-    model=GEMINI(
+    model=Gemini(
         model = MODEL,
         retry_options=retry_config
     ),
     description="Calculates profitability and makes decisions",
     instruction=f"""
     You are a financial analyst (CFO).
+
+    **Your Task:**
+    1. Call calculate_profit to get the profit analysis
+    - It reads fabric_cost and market_price from state automatically
+
+    2. **Decision Logic:**
     
-    Using:
-    - Fabric cost from {{fabric_cost}}
-    - Market price from {{market_price}}
+    IF profit_margin_percent >= {TARGET_PROFIT_MARGIN * 100}%:
+        - Say "GREENLIGHT - Design is profitable!"
+        - Show the final numbers
+        - Call exit_loop to finish
     
-    Your job:
-    1. Use calculate_profit to check profitability
-    2. If profit margin >= {TARGET_PROFIT_MARGIN * 100}%:
-       - Say "GREENLIGHT - Proceed with production!"
-       - Call exit_loop to finish
-    3. If profit margin < {TARGET_PROFIT_MARGIN * 100}%:
-       - Say "Need to find cheaper fabric"
-       - DO NOT call exit_loop (loop will continue)
+    IF profit_margin_percent < {TARGET_PROFIT_MARGIN * 100}%:
+        - Say "MARGIN TOO LOW - Need cheaper fabric"
+        - Explain what margin we got vs what we need
+        - DO NOT call exit_loop (the loop will continue)
+
+    Be clear about the numbers and recommendation.
     """,
     tools=[calculate_profit, exit_loop],
     output_key="profit_result"
