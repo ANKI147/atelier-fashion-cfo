@@ -27,13 +27,10 @@ retry_config=types.HttpRetryOptions(
 )
 
 
-MODEL = "gemini-2.5-pro"  # ← Best for free tier!
+MODEL = "gemini-2.5-pro" 
 
-MODEL_FAST = "gemini-2.5-flash"  # ← Fastest, lower cost
-# ============================================================================
-# AGENT A: The Analyzer
-# ============================================================================
-# Job: Look at the garment and figure out what it needs
+MODEL_FAST = "gemini-2.5-flash" 
+
 
 agent_analyzer = Agent(
     name="image_analyzer",
@@ -47,24 +44,28 @@ agent_analyzer = Agent(
     
     Your goal is to deconstruct a fashion image into a precise Bill of Materials (BOM) by analyzing visual cues like physics, lighting, and structure.
 
-    **PHASE 1: VISUAL CHAIN OF THOUGHT (Internal Reasoning)**
-    Before calling any tools, you must perform a step-by-step visual inspection:
-    
-    1.  **Analyze Fabric Physics (Drape & Weight):**
-        * *Gravity Check:* Does the hem pool heavily on the floor? (Indicates Heavyweight). Does it float/flutter? (Indicates Chiffon/Organza).
-        * *Fold Check:* Are the folds crisp and paper-like? (Poplin/Taffeta). Are they soft and fluid? (Silk/Rayon).
-        * *Stretch Check:* Is the garment clinging tightly to the body without visible darts? (Indicates Knits/Spandex).
-        
-    2.  **Analyze Surface & Lighting:**
-        * *Sheen:* High, white highlights = Satin, Silk Charmeuse, or Vinyl.
-        * *Matte:* Light-absorbing surface = Wool, Cotton, or Linen.
-        * *Texture:* Visible weave or fuzz = Tweed, Velvet, or Bouclé.
+    Use a ReAct-style workflow:
+    - Thought: Briefly note what you will infer next (keep it short; no long chain-of-thought).
+    - Action: Call a tool (save_garment_specs, save_optimization_flag) with the required fields.
+    - Observation: Read the tool result and verify the state was saved.
+    - Final: Output a concise garment_info summary (2–4 sentences) so output_key="garment_info" is always populated.
 
-    3.  **Analyze Construction:**
-        * Look for "Cost Drivers": Ruffles, pleats, linings, boning, or complex corsetry.
-        * Estimate Yardage: Assume standard 60-inch fabric width. (e.g., A full circle skirt requires 4x more fabric than a pencil skirt).
+    THOUGHT (visual inspection checklist; keep it brief)
+    1) Fabric physics (drape/weight):
+    - Gravity check: pooling hem => heavyweight; floating/flutter => chiffon/organza.
+    - Fold check: crisp folds => poplin/taffeta; fluid folds => silk/rayon.
+    - Stretch check: clinging without darts => knits/spandex.
 
-    **PHASE 2: DATA EXTRACTION**
+    2) Surface & lighting:
+    - Sheen: bright highlights => satin/silk charmeuse/vinyl.
+    - Matte: light-absorbing => wool/cotton/linen.
+    - Texture: visible weave/fuzz => tweed/velvet/bouclé.
+
+    3) Construction:
+    - Identify cost drivers (ruffles, pleats, linings, boning, corsetry).
+    - Estimate yardage assuming 60-inch width (include ~10% waste buffer).
+
+    ACTION: Call the tool save_garment_specs with these fields:
     Based on your reasoning, call the `save_garment_specs` tool. You must populate the garment_info ouput with a summary of the details below : 
     
     * garment_type: Specify if the garment is a top, bottom, dress, outerwear, or accessory.
@@ -79,21 +80,34 @@ agent_analyzer = Agent(
     * construction_complexity: "Low", "Medium", or "High".
     * reasoning_summary: A one-sentence explanation of why you chose this fabric (e.g., "Identified Silk Charmeuse due to high specular highlights and fluid liquid-like drape.").
     
-    **IMPORTANT:**
-    - Call the tool "save_optimization_flag to set the key "needs_optimization" to the value "initial" in state.
-    **TONE:** Be concise, technical, and factual. No fluff.
+    OBSERVATION 1
+    Confirm the tool result indicates specs were saved successfully.
 
-""",
+    ACTION 2 (must do)
+    Call save_optimization_flag with:
+    - needs_optimization = "initial"
+
+    OBSERVATION 2
+    Confirm the tool result indicates the optimization flag was saved.
+
+    FINAL (must do; this becomes garment_info)
+    Write a concise summary including:
+    - garment_type, garment_name, silhoutte, length
+    - sleeves, neckline
+    - primary_fabric + fabric_confidence
+    - estimated_yardage + construction_complexity
+    - reasoning_summary (one sentence on why you chose the fabric)
+
+    TONE: Be concise, technical, and factual. No fluff.
+
+    """,
     tools = [save_garment_specs, save_optimization_flag],
     output_key="garment_info"
 )
 
 print("Agent Analyzer initialized.")
 
-# ============================================================================
-# AGENT B: The Fabric Sourcer
-# ============================================================================
-# Job: Find fabric prices
+
 
 agent_sourcer = Agent(
     name="sourcer",
@@ -165,10 +179,6 @@ agent_sourcer = Agent(
 )
 
 
-# ============================================================================
-# AGENT C: The Market Researcher
-# ============================================================================
-# Job: Find what similar items sell for
 
 agent_market = Agent(
     name="market_researcher",
@@ -212,10 +222,6 @@ agent_market = Agent(
 )
 
 
-# ============================================================================
-# AGENT D: The Optimizer (CFO)
-# ============================================================================
-# Job: Calculate profit and decide if we're done or need to try again
 
 agent_optimizer = Agent(
     name="optimizer",

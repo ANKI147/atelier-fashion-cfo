@@ -12,11 +12,6 @@ from .planner import (
 )
 
 
-# ============================================================================
-# STEP 1: Create PARALLEL workflow
-# ============================================================================
-# Agent B (Sourcer) and Agent C (Market) run at the SAME TIME
-# Why? Because finding fabric prices and market prices are independent tasks
 
 parallel_research = ParallelAgent(
     name="research_team",
@@ -25,26 +20,15 @@ parallel_research = ParallelAgent(
 )
 
 
-# ============================================================================
-# STEP 2: Create LOOP workflow  
-# ============================================================================
-# This contains: Parallel research → Optimizer
-# Keeps repeating until optimizer calls exit_loop (or max 3 times)
 
 optimization_loop = LoopAgent(
     name="optimization_loop",
     description="Keeps optimizing until profit target is met",
     sub_agents=[parallel_research, agent_optimizer],
-    max_iterations=3  # Safety limit - don't loop forever!
+    max_iterations=3  # Safety limit 
 )
 
 
-# ============================================================================
-# STEP 3: Create SEQUENTIAL workflow (the main pipeline)
-# ============================================================================
-# This is the complete workflow:
-#   1. First: Analyzer (must finish before anything else)
-#   2. Then: Optimization loop (contains parallel + optimizer)
 
 root_agent = SequentialAgent(
     name="fashion_advisor",

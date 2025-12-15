@@ -1,8 +1,6 @@
 from google.adk.tools import ToolContext
 
-# ============================================================================
-# TOOL 1: Save Garment Specs (Agent A)
-# ============================================================================
+
 def save_garment_specs(
     garment_type: str,
     garment_name: str,
@@ -14,7 +12,7 @@ def save_garment_specs(
     primary_fabric: str,
     estimated_yardage: float,
     construction_complexity: str,
-    tool_context: ToolContext  # ADK injects this automatically!
+    tool_context: ToolContext 
 ) -> str:
     """
     Saves the garment analysis to session state.
@@ -29,7 +27,7 @@ def save_garment_specs(
     Returns:
         Confirmation message
     """
-    # Save to session state - other agents can read this!
+   
     tool_context.state["garment_specs"] = {
         "garment_type": garment_type,
         "garment_name": garment_name,
@@ -46,7 +44,6 @@ def save_garment_specs(
     return f"✅ Specs saved: {garment_name} made of {primary_fabric}, {estimated_yardage} yards needed."
 
 
-# ============================================================================
 
 def save_optimization_flag(
     needs_optimization: str,

@@ -1,4 +1,11 @@
-*Run this command to install:*
-```bash
-pip install -r requirements.txt
-playwright install  # CRITICAL: This downloads the actual browser for the scraper
+# Google Agent Development Kit
+google-adk
+
+# Google Generative AI SDK
+google-genai
+
+# Environment variable management
+python-dotenv
+
+# HTTP requests (for SerpAPI calls)
+requests

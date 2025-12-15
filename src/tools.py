@@ -1,14 +1,4 @@
-"""
-tools.py - Custom Tools using ADK's ToolContext for state management
-=====================================================================
 
-Key Concepts:
-- ToolContext: ADK automatically injects this when you add `tool_context` parameter
-- tool_context.state: A dictionary to read/write session state
-- output_key: Automatically saves agent's response to state (set in planner.py)
-
-
-"""
 
 from google.adk.tools import ToolContext
 # tools.py
@@ -22,10 +12,6 @@ load_dotenv()  # Load environment variables from .env file
 TARGET_PROFIT_MARGIN = 0.40
 
 
-
-# ============================================================================
-# TOOL 4: Find Cheaper Alternative (Agent B - during optimization)
-# ============================================================================
 def find_cheaper_alternative(
     current_fabric: str,
     tool_context: ToolContext
@@ -61,15 +47,12 @@ def find_cheaper_alternative(
     }
 
 
-# ============================================================================
-# TOOL 5: Calculate Profit (Agent D)
-# ============================================================================
 
 import json
 from typing import Optional
 from google.adk.tools import ToolContext
 
-# keep your existing TARGET_PROFIT_MARGIN and _coerce_json_dict(value) here
+
 
 def _coerce_json_dict(value):
     """
@@ -240,4 +223,3 @@ def serpapi_google_shopping_market_price(
     tool_context.state["market_price"] = result
     return result
 
-# ============================================================================
