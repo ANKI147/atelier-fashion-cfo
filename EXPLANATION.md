@@ -76,6 +76,8 @@ GOOGLE_API_KEY=your-gemini-key
 SERPAPI_API_KEY=your-serpapi-key
 ```
 
+![Gemini Usage](data/Gemini_Usage.png)
+
 ---
 
 ## 4. Observability & Testing

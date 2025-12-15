@@ -110,6 +110,14 @@ st.set_page_config(page_title="Atelier - Fashion CFO", page_icon="👗", layout=
 st.title("👗 Atelier - AI Fashion CFO")
 st.markdown("**Analyze garment profitability using multi-agent AI**")
 
+# Architecture Section (Full Width)
+with st.expander("🏗️ **System Architecture**", expanded=False):
+    arch_image_path = Path("data/Architecture.png")
+    if arch_image_path.exists():
+        st.image(str(arch_image_path), caption="Multi-Agent Pipeline Architecture", use_container_width=True)
+    else:
+        st.info("Architecture diagram not found at `data/Architecture.png`")
+
 # Sidebar
 with st.sidebar:
     st.header("⚙️ Configuration")
@@ -275,27 +283,23 @@ if "final_state" in st.session_state:
         else:
             st.metric("Profit", "$0.00")
     
-    # Bottom Row: Expandable Details
+    # Bottom: Expandable Details (stacked vertically)
     st.divider()
     
-    col_log, col_raw = st.columns(2)
+    with st.expander("📜 **Agent Event Log**"):
+        if "events_log" in st.session_state:
+            for event in st.session_state["events_log"]:
+                agent = event["agent"]
+                for name, args in event["calls"]:
+                    st.code(f"[{agent}] TOOL CALL: {name}")
+                for name, resp in event["resps"]:
+                    st.code(f"[{agent}] TOOL RESULT: {name}")
+                for text in event["texts"]:
+                    if text.strip():
+                        st.text(f"[{agent}] {text[:150]}...")
     
-    with col_log:
-        with st.expander("📜 **Agent Event Log**"):
-            if "events_log" in st.session_state:
-                for event in st.session_state["events_log"]:
-                    agent = event["agent"]
-                    for name, args in event["calls"]:
-                        st.code(f"[{agent}] TOOL CALL: {name}")
-                    for name, resp in event["resps"]:
-                        st.code(f"[{agent}] TOOL RESULT: {name}")
-                    for text in event["texts"]:
-                        if text.strip():
-                            st.text(f"[{agent}] {text[:150]}...")
-    
-    with col_raw:
-        with st.expander("🔧 **Raw State (Debug)**"):
-            st.json(state)
+    with st.expander("🔧 **Raw State (Debug)**"):
+        st.json(state)
 
 else:
     st.info("👆 Upload an image and click 'Analyze Profitability' to see results")
