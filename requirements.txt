@@ -9,3 +9,9 @@ python-dotenv
 
 # HTTP requests (for SerpAPI calls)
 requests
+
+#SerpAPI client
+serpapi
+
+#streamlit for UI
+streamlit

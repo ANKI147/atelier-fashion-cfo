@@ -101,11 +101,18 @@ GOOGLE_API_KEYS="key1,key2,key3"
 
 ### 3. Run Analysis
 
+#### Option A: Web Interface (Recommended for Demos)
+```bash
+streamlit run app.py
+```
+Opens at http://localhost:8501 with a visual interface for uploading images and viewing results.
+
+#### Option B: Command Line
 ```bash
 python run.py --image data/garments/your_garment_image.jpg
 ```
 
-**Command Line Options:**
+**CLI Options:**
 ```bash
 python run.py --image <path>              # Required: path to garment image
               --prompt <text>             # Optional: custom analysis prompt
@@ -125,7 +132,8 @@ python run.py --image data/garments/midi_satin_elegant_evening.jpg
 
 ```
 Atelier/
-├── run.py                      # Entry point - run garment analysis
+├── app.py                      # Streamlit web interface
+├── run.py                      # CLI entry point
 ├── .env                        # API keys configuration
 ├── requirements.txt            # Python dependencies
 │
