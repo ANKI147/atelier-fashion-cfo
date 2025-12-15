@@ -123,29 +123,6 @@ def _estimate_labor_cost_from_specs(specs: dict, hourly_rate: float = 10.0) -> f
     return round(hours * hourly_rate, 2)
 
 
-def _choose_selling_price(market_price: dict) -> float:
-    """
-    Your rule:
-    - High Demand: (average_price + price_range_high) / 2
-    - Low Demand:  (average_price + price_range_low) / 2
-    - Medium Demand: average_price
-    """
-    avg = float(market_price.get("average_price", 0) or 0)
-    low = float(market_price.get("price_range_low", 0) or 0)
-    high = float(market_price.get("price_range_high", 0) or 0)
-    trend = (market_price.get("trend_status") or "").strip().lower()
-
-    # Fallbacks if low/high missing
-    if low <= 0:
-        low = avg
-    if high <= 0:
-        high = avg
-
-    if "high" in trend:
-        return round((avg + high) / 2.0, 2)
-    if "low" in trend:
-        return round((avg + low) / 2.0, 2)
-    return round(avg, 2)
 
 
 def calculate_profit(tool_context: ToolContext, labor_cost: Optional[float] = None) -> dict:
@@ -163,7 +140,7 @@ def calculate_profit(tool_context: ToolContext, labor_cost: Optional[float] = No
     fabric_total_cost = round(price_per_yard * yards_needed, 2)
 
     # --- Revenue math (Agent C output) ---
-    selling_price = _choose_selling_price(market_price)
+    selling_price = float(market_price.get("average_price", 0) or 0)
 
     # --- Labor math (NEW; uses garment specs) ---
     if labor_cost is None:

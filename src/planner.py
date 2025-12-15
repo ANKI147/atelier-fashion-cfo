@@ -69,7 +69,7 @@ agent_analyzer = Agent(
     
     * garment_type: Specify if the garment is a top, bottom, dress, outerwear, or accessory.
     * garment_name: Use specific industry terminology (e.g., "Bias-Cut Slip Dress" NOT just "Dress").
-    * silhouette: Describe the shape (e.g., "Flowing A-line", "Mermaid", "Sheath").
+    * silhoutte: Describe the shape (e.g., "Flowing A-line", "Mermaid", "Sheath").
     * length: "Mini", "Midi", or "Maxi".
     * sleeves: "Sleeveless", "Cap", "Long", etc.
     * neckline: "V-neck", "Boat", "Cowl", etc.
@@ -106,7 +106,7 @@ agent_sourcer = Agent(
     You are a fabric procurement specialist.
 
     **Your Task:**
-    1. Read the garment info and specs from state: {garment_info}, {garment_specs}.
+    1. Read the [garment_info] from the previous agent and specs from state:  {garment_specs}.
     2. Use Google Search to find wholesale fabric prices
     - Search for: "wholesale [fabric name] fabric price per yard".
     3. Extract the price from search results.
@@ -176,13 +176,13 @@ agent_market = Agent(
         model = MODEL_FAST,
         retry_options=retry_config
     ),
-    description="Researches market prices for similar garments using Google Search",
+    description="Researches market prices for similar garments using serpapi",
     instruction="""
     You are a fashion market analyst.
 
     **Your Task:**
-    1. Read the garment info and specs from state: {garment_info}, {garment_specs}.
-    2. Call the tool serpapi_google_shopping_market_price to find retail prices
+    1. Read the [garment_info] from the previous agent and specs from state:  {garment_specs}.
+    2. Call the ONLY the tool serpapi_google_shopping_market_price to find retail prices
     - use [garement_name] from {garment_specs} as the [garment_query] for the tool serpapi_google_shopping_market_price .
     3. Extract pricing information from results.
 
