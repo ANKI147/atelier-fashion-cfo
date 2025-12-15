@@ -10,7 +10,7 @@ load_dotenv()  # Load environment variables from .env file
 # Import our tools
 from .tools import (
     calculate_profit,
-    TARGET_PROFIT_MARGIN
+    serpapi_google_shopping_market_price
 )
 
 from .memory import (
@@ -182,8 +182,8 @@ agent_market = Agent(
 
     **Your Task:**
     1. Read the garment info and specs from state: {garment_info}, {garment_specs}.
-    2. Use Google Search to find retail prices
-    - Search for: "[garment name] price retail" or "[garment name] buy online".
+    2. Call the tool serpapi_google_shopping_market_price to find retail prices
+    - use [garement_name] from {garment_specs} as the [garment_query] for the tool serpapi_google_shopping_market_price .
     3. Extract pricing information from results.
 
     4. **FINAL ANSWER FORMAT (MANDATORY)**  
@@ -207,7 +207,7 @@ agent_market = Agent(
 
     Be practical – make reasonable estimates from search snippets.
     """,
-    tools=[google_search],
+    tools=[serpapi_google_shopping_market_price],
     output_key="market_price"
 )
 

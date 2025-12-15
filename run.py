@@ -15,6 +15,8 @@ load_dotenv()
 APP_NAME = "Atelier"
 USER_ID = "local_user"
 
+print("SERPAPI_API_KEY present:", bool(os.getenv("SERPAPI_API_KEY")))
+
 
 # --------------------------
 # Formatting helpers

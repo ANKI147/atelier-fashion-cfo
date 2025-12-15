@@ -13,17 +13,15 @@ from .executor import (
     optimization_loop
 )
 
-
-
 from .tools import (
-    find_cheaper_alternative,
     calculate_profit,
-    TARGET_PROFIT_MARGIN
+    serpapi_google_shopping_market_price
 )
 
 from .memory import (
     save_garment_specs,
-    save_fabric_cost,
-    save_market_price
+    save_optimization_flag
 )
+
+
 
