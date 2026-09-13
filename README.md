@@ -151,7 +151,7 @@ The pinned direct dependencies were installed together and tested on Python 3.12
 
 ## Project Background
 
-Built for the Agentic AI App Hackathon. This standalone edition is maintained by [Ankit More](https://github.com/ANKI147) and is based on [NeelGaji/Atelier](https://github.com/NeelGaji/Atelier), branch `agents_v2`.
+Built for the Agentic AI App Hackathon. This standalone edition is maintained by [Ankit More](https://github.com/ANKI147) and is based on [Atelier](https://github.com/NeelGaji/Atelier), branch `agents_v2` which we did for ODSC hackathon.
 
 Contributor attribution is retained. The standalone history was sanitized to remove a previously committed environment file; affected commit hashes differ from upstream. This README was revised for the standalone edition to document setup, configuration fixes, tests, and limitations.
 
