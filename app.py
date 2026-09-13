@@ -141,15 +141,6 @@ with st.expander("🏗️ **System Architecture**", expanded=False):
 
 # Sidebar
 with st.sidebar:
-    st.header("⚙️ Configuration")
-    
-    api_key_status = "✅ Configured" if os.getenv("GOOGLE_API_KEY") else "❌ Missing"
-    serpapi_status = "✅ Configured" if os.getenv("SERPAPI_API_KEY") else "❌ Missing"
-    
-    st.markdown(f"**Gemini API:** {api_key_status}")
-    st.markdown(f"**SerpAPI:** {serpapi_status}")
-    
-    st.divider()
     st.header("📊 Target Settings")
     target_margin = st.slider("Target Profit Margin", 20, 60, 40, 5, format="%d%%")
     max_iterations = st.slider("Max Optimization Loops", 1, 5, 3)
@@ -341,4 +332,4 @@ else:
 
 # Footer
 st.divider()
-st.markdown("Built with **Google ADK** • **Gemini 2.5** • **SerpAPI** | Hackathon Project")
+st.markdown("Built by Ankit More")

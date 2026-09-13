@@ -158,6 +158,11 @@ class EntryPointTests(unittest.TestCase):
         app_path = Path(__file__).resolve().parents[1] / "app.py"
         app_test = AppTest.from_file(str(app_path), default_timeout=30).run()
         self.assertEqual(len(app_test.exception), 0)
+        markdown = [element.value for element in app_test.markdown]
+        self.assertEqual(markdown.count("Built by Ankit More"), 1)
+        self.assertFalse(any("Built with" in value or "Hackathon Project" in value for value in markdown))
+        self.assertFalse(any("Gemini API:" in value or "SerpAPI:" in value for value in markdown))
+        self.assertFalse(any("Configuration" in heading.value for heading in app_test.header))
         app_test.slider[0].set_value(55)
         app_test.slider[1].set_value(2)
         app_test.session_state["final_state"] = {"profit_analysis": {
