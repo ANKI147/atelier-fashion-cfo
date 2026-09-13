@@ -1,3 +1,5 @@
+"""Modified for the standalone edition: apply and validate CLI analysis settings."""
+
 import argparse
 import asyncio
 import json
@@ -14,8 +16,6 @@ load_dotenv()
 
 APP_NAME = "Atelier"
 USER_ID = "local_user"
-
-print("SERPAPI_API_KEY present:", bool(os.getenv("SERPAPI_API_KEY")))
 
 
 # --------------------------
@@ -307,33 +307,46 @@ async def main() -> None:
         default="Analyze the garment in the image and save garment specs (fabric, yardage, complexity).",
     )
     ap.add_argument("--session-id", default="session_structured", help="Session id.")
-    ap.add_argument("--max-iterations", type=int, default=3, help="Should match LoopAgent max_iterations.")
-    ap.add_argument("--target-margin", type=float, default=0.40, help="For display only.")
+    ap.add_argument("--max-iterations", type=int, default=3, help="Maximum optimization iterations (positive integer).")
+    ap.add_argument("--target-margin", type=float, default=0.40, help="Minimum profit margin as a fraction between 0 and 1.")
     args = ap.parse_args()
 
+    if args.max_iterations < 1:
+        ap.error("--max-iterations must be a positive integer")
+    if not 0 < args.target_margin < 1:
+        ap.error("--target-margin must be between 0 and 1, exclusive")
+
     image_path = Path(args.image)
-    if not image_path.exists():
-        raise FileNotFoundError(image_path)
+    if not image_path.is_file():
+        ap.error(f"Image file not found: {image_path}")
+    if guess_mime(image_path) == "application/octet-stream":
+        ap.error("Image must be a JPG, JPEG, PNG, or WEBP file")
 
-    # Key count (display only)
-    keys_env = os.getenv("GOOGLE_API_KEYS", "").strip()
-    if keys_env:
-        key_count = len([k for k in keys_env.split(",") if k.strip()])
-    else:
-        key_count = 1 if os.getenv("GOOGLE_API_KEY") else 0
+    missing_keys = [name for name in ("GOOGLE_API_KEY", "SERPAPI_API_KEY") if not os.getenv(name)]
+    if missing_keys:
+        ap.error(f"Configure the following environment variables: {', '.join(missing_keys)}")
 
-    from src.executor import root_agent
+    from src.executor import build_root_agent
 
     session_service = InMemorySessionService()
-    await session_service.create_session(app_name=APP_NAME, user_id=USER_ID, session_id=args.session_id)
+    await session_service.create_session(
+        app_name=APP_NAME,
+        user_id=USER_ID,
+        session_id=args.session_id,
+        state={"target_profit_margin": args.target_margin},
+    )
 
-    runner = Runner(agent=root_agent, app_name=APP_NAME, session_service=session_service)
+    runner = Runner(
+        agent=build_root_agent(args.max_iterations),
+        app_name=APP_NAME,
+        session_service=session_service,
+    )
 
     printer = PipelinePrinter(
         image_name=image_path.name,
         target_margin=args.target_margin,
         max_iterations=args.max_iterations,
-        key_count=key_count,
+        key_count=1,
     )
     printer.print_banner()
 

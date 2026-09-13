@@ -1,53 +1,81 @@
+# Architecture
 
-# Architecture Overview
+Modified for the standalone edition to document per-run configuration and the minimum-margin decision rule.
 
-Atelier is a multi-agent system designed to act as a "Virtual CFO" for fashion designers. It uses a hierarchical agent workflow to analyze images, source materials, research market data, and optimize profitability in a loop.
+Atelier combines model-assisted research with a deterministic Python cost calculation. Both the CLI and Streamlit interface use the same agent workflow.
 
-![Architecture diagram](data/Architecture.png)
+## Execution
 
+```mermaid
+flowchart TD
+    UI[CLI or Streamlit] --> Session[In-memory session with margin target]
+    UI --> Workflow[Cloned agent tree with iteration limit]
+    Workflow --> Analyzer[Gemini image analyzer]
+    Analyzer --> Specs[Garment specifications]
+    Specs --> Research[Parallel research]
+    Research --> Fabric[Google Search fabric sourcing]
+    Research --> Retail[SerpAPI retail lookup]
+    Fabric --> Calculator[Python calculate_profit tool]
+    Retail --> Calculator
+    Session --> Calculator
+    Calculator --> Optimizer[Gemini optimizer]
+    Optimizer -->|Target met: exit_loop| Report[Results and final state]
+    Optimizer -->|Target not met| Research
+```
+
+The `LoopAgent` stops after its configured limit even if the model does not call `exit_loop`. The diagram's retry edge is bounded by that limit.
 
 ## Components
 
-### 1. User interface
+| Component | Responsibility |
+| --- | --- |
+| [run.py](run.py) | Validates CLI settings and image path, creates the session, and prints tool events and results |
+| [app.py](app.py) | Accepts an image and settings, runs the pipeline, and renders results |
+| [src/planner.py](src/planner.py) | Defines the four agent prompts and tool bindings |
+| [src/executor.py](src/executor.py) | Exports the default agent and clones its tree for configured runs |
+| [src/tools.py](src/tools.py) | Queries Shopping listings and calculates costs and margin |
+| [src/memory.py](src/memory.py) | Writes garment specifications and optimization flags to tool context |
 
-- **CLI (Command Line Interface):** The entry point is `run.py`.
-- Accepts arguments for image paths, prompts, and target margins.
-- Features a custom `PipelinePrinter` class that renders structured, aesthetically formatted logs (ASCII boxes, tables) to the terminal for real-time feedback.
+`build_root_agent` clones the agent tree so loop limits are not changed globally. Each entry point creates a separate `InMemorySessionService` for an analysis and stores `target_profit_margin` in that session.
 
-### 2. Agent core
+## State Contract
 
-- **Planner (`planner.py`):** Defines four specialized agents using the Google ADK:
-  - **Analyzer:** A multimodal agent (Gemini 2.5 Pro) that extracts garment specifications (fabric, yardage, complexity) from images.
-  - **Sourcer:** A research agent (Gemini 2.5 Flash) that finds wholesale fabric prices via Google Search.
-  - **Market:** A research agent (Gemini 2.5 Flash) that finds competitor retail prices via SerpAPI.
-  - **Optimizer:** A logic-heavy agent (Gemini 2.5 Pro) that calculates margins and decides whether to "Greenlight" the design or request changes (cheaper fabric/upgrade materials).
-- **Executor (`executor.py`):** Orchestrates the agents using ADK patterns:
-  - **SequentialAgent:** Runs the Analyzer first, followed by the Loop.
-  - **ParallelAgent:** Runs the Sourcer and Market agents concurrently to reduce latency.
-  - **LoopAgent:** Manages the optimization cycle, allowing the system to retry sourcing up to 3 times if profit targets aren't met.
-- **Memory (`memory.py`):**
-  - Uses `InMemorySessionService` to maintain session state.
-  - **Shared state dictionary:** Stores critical data (`garment_specs`, `fabric_cost`, `market_price`, `profit_analysis`) accessible by all tools via `ToolContext`.
+| Key | Value |
+| --- | --- |
+| `target_profit_margin` | Requested minimum margin as a fraction; defaults to `0.40` when absent |
+| `garment_specs` | Dictionary of garment type, fabric, yardage, and complexity |
+| `garment_info` | Analyzer's textual summary |
+| `fabric_cost` | Sourcing output with `price_per_yard` and `yards_needed` |
+| `market_price` | Retail comparison with `average_price` and price range |
+| `profit_analysis` | Calculated costs, profit, target, and `is_profitable` |
+| `needs_optimization` | Legacy string flag: `initial`, `needed`, or `not needed` |
+| `profit_result` | Optimizer's explanation |
 
-### 3. Tools / APIs
+Research results can be dictionaries or JSON strings; the calculator accepts either form. Required numeric values are validated before calculating profit. The legacy garment field `silhoutte` is retained for compatibility with the original tools and displays.
 
-- **Google Gemini API:**
-  - `gemini-2.5-pro`: Used for complex reasoning (vision analysis, financial optimization).
-  - `gemini-2.5-flash`: Used for high-speed, parallel tasks (search queries).
-- **External APIs:**
-  - **SerpAPI (Google Shopping):** Fetches real-time retail pricing trends.
-  - **Google Search:** Used by the Sourcer agent to find wholesale fabric suppliers.
-- **Custom tools (`tools.py`):**
-  - `calculate_profit`: Performs the financial math (labor + material vs. retail).
-  - `save_garment_specs`: Structured data extraction tool.
-  - `save_optimization_flag`: Controls the loop logic (continue vs. exit).
+## Decision Rule
 
-### 4. Observability
+The Python calculator compares margin with the session's minimum target. The optimizer is instructed to use that boolean result, request cheaper sourcing below target, and call `exit_loop` on success. There is no upper-margin rejection rule.
 
-- **Event streaming:** The `run.py` script listens to the ADK event stream to capture every thought, tool call, and result.
-- **Structured logging:**
-  - **Raw output:** Prints raw tool inputs/outputs for debugging (`print_event_io`).
-  - **User-facing output:** The `PipelinePrinter` consolidates complex JSON states into readable "Agent Completion Cards" (e.g., "AGENT B: FABRIC SOURCING COMPLETE").
-  - **State tracking:** Prints the full JSON state at the end of execution for auditability.
+Numeric validation does not verify the truth of model estimates. The workflow does not guarantee that the agents will obtain valid data or make a design profitable.
+
+## External Services
+
+- Gemini receives uploaded image bytes and the analysis prompt.
+- Google Search is available to the fabric sourcing agent.
+- SerpAPI receives a garment search query, using US-oriented Shopping defaults and a 30-second HTTP timeout.
+- API credentials are loaded from the local environment and must not be committed.
+
+The CLI emits tool inputs, tool results, model text, and the final session state. The web interface collects events before displaying its results; this is not a production telemetry or monitoring system.
+
+## Original Diagram
+
+The retained hackathon illustration is historical reference. Its fixed three-iteration label and low/high-margin loop describe the earlier design; the standalone behavior is documented above.
+
+![Original Atelier architecture illustration](data/Architecture.png)
+
+## Verification
+
+[Offline tests](tests/test_pipeline.py) exercise the calculator, isolated loop settings, CLI session configuration, and Streamlit rendering. Live Gemini and search integrations require separate validation with authorized credentials and quota.
 
 

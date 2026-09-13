@@ -1,17 +1,7 @@
-# Google Agent Development Kit
-google-adk
-
-# Google Generative AI SDK
-google-genai
-
-# Environment variable management
-python-dotenv
-
-# HTTP requests (for SerpAPI calls)
-requests
-
-#SerpAPI client
-serpapi
-
-#streamlit for UI
-streamlit
+# Modified for the standalone edition: direct dependencies tested on Python 3.12.
+google-adk==2.9.0
+google-genai==2.23.0
+python-dotenv==1.2.3
+requests==2.34.2
+serpapi==1.1.1
+streamlit==1.63.0

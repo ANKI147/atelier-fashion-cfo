@@ -1,3 +1,5 @@
+"""Modified for the standalone edition: use the calculator's margin decision."""
+
 from google.adk.agents import Agent
 from google.adk.models.google_llm import Gemini
 from google.adk.runners import InMemoryRunner
@@ -125,26 +127,8 @@ agent_sourcer = Agent(
     - Search for: "wholesale [fabric name] fabric price per yard".
     3. Extract the price from search results.
 
-    Check if the state key "needs_optimization" is set to "needed":
-    if yes then proceed with the following instructions for optimization:
-    **YOUR TASK FOR OPTIMIZATION WHEN LOOPING:**
-
-    Check if the state key "needs_optimization" is set to "needed":
-
-    If YES, decide what to do using the latest optimizer output :
-
-    - If a state key names profit_result exists and contains the phrase "MARGIN TOO HIGH":
-    Your task is to find a HIGHER QUALITY / HIGHER COST fabric (upgrade materials).
-    Search examples:
-    - "premium wholesale [current_fabric] fabric price per yard"
-    - "Italian [current_fabric] suiting price per yard"
-    - "wool cashmere blend suiting price per yard"
-    - "100% silk [fabric] price per yard"
-    Pick a higher quality option that plausibly costs more than the current one.
-
-    - Otherwise (default when margin was low or profit_result is missing):
-    
-        your task is to find a LOWER price for the CURRENT fabric.:
+    If the previous optimizer requested cheaper fabric:
+    Your task is to find a LOWER price for the CURRENT fabric.
     - Identify the current_fabric and its source from {garment_specs}.
     - use Google Search to find a source for the current fabric at a LOWER price.
     - Search for: "cheap wholesale [current_fabric] fabric price per yard".
@@ -237,11 +221,10 @@ agent_optimizer = Agent(
     1. Call calculate_profit to get the profit analysis
     - It reads fabric_cost and market_price from state automatically
 
-    2. **Decision Logic:**
+    2. Use is_profitable and target_margin_percent from the tool result.
+    The target is a minimum margin, not a margin band.
 
-    
-    
-    IF {TARGET_PROFIT_MARGIN * 100 +20}% >= profit_margin_percent >= {target_margin_percent * 100 -20}%:
+    IF is_profitable is true:
         - Say "GREENLIGHT - Design is profitable!"
         - Show the final numbers
         - call the tool save_optimization_flag to set the key "needs_optimization" to the value "not needed" in state.
@@ -249,18 +232,14 @@ agent_optimizer = Agent(
         - Provide a brief summary of why and how the design is profitable in the profit_result output.
 
     
-    IF profit_margin_percent < {target_margin_percent * 100}%:
+    IF is_profitable is false:
         - your output must be a string "MARGIN TOO LOW - Need cheaper fabric" 
         - Explain what margin we got vs what we need
         - call the tool save_optimization_flag to set the key "needs_optimization" to the value "needed" in state.
         - DO NOT call exit_loop (the loop will continue)
 
-    IF profit_margin_percent > {target_margin_percent * 100 + 10}%:
-        - your output must be a string "MARGIN TOO HIGH - Upgrade materials" in profit_result
-        - Briefly state current margin vs desired band (TARGET +/- 10%)
-        - call save_optimization_flag to set "needs_optimization" to "needed"
-        - DO NOT call exit_loop
-
+    If the tool cannot calculate valid costs or prices, report the missing data.
+    Never invent a successful profit analysis or declare GREENLIGHT on a tool error.
 
     Be clear about the numbers and recommendation.
     """,

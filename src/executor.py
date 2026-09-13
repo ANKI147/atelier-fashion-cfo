@@ -1,3 +1,5 @@
+"""Modified for the standalone edition: isolate agent settings for each run."""
+
 from google.adk.agents import SequentialAgent, ParallelAgent, LoopAgent
 from dotenv import load_dotenv
 
@@ -35,5 +37,14 @@ root_agent = SequentialAgent(
     description="Complete fashion design profitability analyzer",
     sub_agents=[agent_analyzer, optimization_loop]
 )
+
+
+def build_root_agent(max_iterations: int = 3) -> SequentialAgent:
+    if isinstance(max_iterations, bool) or not isinstance(max_iterations, int) or max_iterations < 1:
+        raise ValueError("max_iterations must be a positive integer")
+
+    configured_agent = root_agent.clone()
+    configured_agent.sub_agents[1].max_iterations = max_iterations
+    return configured_agent
 
 

@@ -1,247 +1,158 @@
-# Atelier - AI-Powered Fashion CFO
+# Atelier
 
-**Automated profitability analysis for fashion designers using multi-agent AI**
+**AI-assisted garment costing and profitability analysis.**
 
-Atelier analyzes garment images to determine manufacturing costs, market pricing, and profitability—helping fashion designers make data-driven business decisions before production.
+Atelier turns a garment image into an estimated material breakdown, wholesale fabric research, comparable retail prices, and a cost-and-margin report. Four specialized agents coordinate through Google ADK, with a Streamlit interface and a command-line entry point.
 
-## 🧪 Testing
+**Python 3.12 | Google ADK | Gemini | Google Search | SerpAPI | Streamlit**
 
-**Try different garment types from the sample folder:**
-```bash
-# Elegant evening wear
-python run.py --image data/garments/midi_satin_elegant_evening.jpg
+This is a hackathon prototype, not a production pricing system. Fabric identification, yardage, and labor are estimates; search results may be incomplete. No benchmark accuracy or business ROI is claimed.
 
-# Casual wear
-python run.py --image data/garments/mini_pleated_matte_casual.jpg
+[Quick Start](#quick-start) | [Architecture](ARCHITECTURE.md) | [Demo](DEMO.md) | [Tests](#tests)
 
-# Business attire
-python run.py --image data/garments/hip_length_structured_business.jpg
+## Interface Preview
 
-# Traditional style
-python run.py --image data/garments/maxi_flowy_chiffon_traditional.jpg
+![Atelier interface with a sample garment and analysis settings](images/dashboard.png)
+
+Local interface with a sample image uploaded. API credentials are not configured in this capture; it does not show a live analysis result.
+
+## Workflow
+
+1. **Analyze:** Gemini inspects the image and saves garment type, fabric, estimated yardage, and construction complexity to session state.
+2. **Research in parallel:** The sourcing agent searches wholesale fabric prices while the market agent queries Google Shopping through SerpAPI.
+3. **Calculate:** A Python tool computes fabric cost, heuristic labor cost, and margin against the selected target.
+4. **Refine:** The optimizer requests cheaper sourcing when the minimum margin is not met, or exits on success. An iteration limit bounds the loop.
+
+```mermaid
+flowchart TD
+    Input[Garment image] --> Analyzer[Image analyzer]
+    Analyzer --> Research[Parallel research]
+    Research --> Sourcer[Fabric sourcing: Google Search]
+    Research --> Market[Retail comparison: SerpAPI]
+    Sourcer --> Profit[Python cost and margin calculation]
+    Market --> Profit
+    Profit --> Decision{Minimum margin met?}
+    Decision -->|Yes| Report[Final report]
+    Decision -->|No, iterations remain| Research
+    Decision -->|Limit reached| Review[Latest result requires review]
 ```
 
-**Sample images are available in `data/garments/`**
+## Quick Start
 
----
+Use Python 3.12, the version used for the local checks and CI. Live analysis requires a Gemini API key and a SerpAPI key with available quota. Requests may incur provider charges.
 
-## 🎯 What It Does
-
-Upload a garment image → Get instant profitability analysis:
-
-1. **Image Analysis** - Identifies fabric type, construction details, yardage
-2. **Cost Research** - Searches wholesale fabric suppliers for current pricing  
-3. **Market Analysis** - Finds retail prices for similar garments via Google Shopping
-4. **Profit Calculation** - Determines if the design meets ~40% target profit margin (±20% acceptable range)
-
----
-
-## 🏗️ Architecture
-
-**Multi-Agent System** powered by Google ADK:
-
-```
-📸 Garment Image
-    ↓
-🤖 Agent A (Analyzer) [Gemini 2.5 Pro]
-    → Analyzes: fabric, silhouette, yardage, construction complexity
-    ↓
-🔄 Optimization Loop (max 3 iterations)
-    ↓
-🤖 Agent B (Sourcer) + 🤖 Agent C (Market) ← Run in Parallel [Gemini 2.5 Flash]
-    → Searches: fabric prices (Google Search) + retail prices (SerpAPI Shopping)
-    ↓
-🤖 Agent D (Optimizer) [Gemini 2.5 Pro]
-    → Calculates: profit margin (fabric + labor costs)
-    → Decision: GREENLIGHT ✅ | MARGIN TOO LOW ⚠️ | MARGIN TOO HIGH ⬆️
-    ↓
-📊 Final Report: Cost breakdown + Profitability verdict
-```
-
-**Key Features:**
-- **Parallel Execution**: Fabric sourcing and market research run simultaneously
-- **Iterative Optimization**: Automatically finds cheaper/premium alternatives based on margin
-- **Real Data**: Live Google Search + SerpAPI Google Shopping for current pricing
-- **Smart Labor Estimation**: Calculates labor costs based on garment type and complexity
-
----
-
-## 🚀 Quick Start
-
-### 1. Install Dependencies
+### Install
 
 ```bash
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-pip install -r requirements.txt
+git clone https://github.com/ANKI147/atelier-fashion-cfo.git
+cd atelier-fashion-cfo
+python3.12 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
 ```
 
-### 2. Configure API Keys
+On Windows, activate the environment with `.venv\Scripts\Activate.ps1` in PowerShell.
 
-Create a `.env` file:
+### Configure
 
-```env
-# Google Gemini API (required)
-GOOGLE_API_KEY="your-gemini-key"
+Create a local `.env` using the variable names in [.env.example](.env.example):
 
-# SerpAPI for Google Shopping market research (required)
-SERPAPI_API_KEY="your-serpapi-key"
+```dotenv
+GOOGLE_API_KEY=your_gemini_api_key
+SERPAPI_API_KEY=your_serpapi_api_key
 ```
 
-**Get API Keys:**
-- Gemini: https://aistudio.google.com/
-- SerpAPI: https://serpapi.com/ (100 searches/month free)
+Get keys from [Google AI Studio](https://aistudio.google.com/) and [SerpAPI](https://serpapi.com/). Keep real keys out of Git. Environment files and virtual environments are ignored; only the placeholder template is tracked. API key rotation is not implemented.
 
-**Optional: Multiple API Keys**
+### Web Interface
 
-For higher throughput, you can provide multiple Gemini keys:
-```env
-GOOGLE_API_KEYS="key1,key2,key3"
-```
-
-### 3. Run Analysis
-
-#### Option A: Web Interface (Recommended for Demos)
 ```bash
-streamlit run app.py
+python -m streamlit run app.py
 ```
-Opens at http://localhost:8501 with a visual interface for uploading images and viewing results.
 
-#### Option B: Command Line
+Open http://localhost:8501, upload a JPG, JPEG, PNG, or WebP image, and select the margin target and loop limit. Analysis is disabled until both API keys are present.
+
+### Command Line
+
 ```bash
-python run.py --image data/garments/your_garment_image.jpg
+python run.py --image data/garments/maxi_draped_satin_evening.jpg
+python run.py --image data/garments/mini_pleated_matte_casual.jpg --target-margin 0.50 --max-iterations 2
 ```
 
-**CLI Options:**
+| Option | Default | Behavior |
+| --- | --- | --- |
+| `--image` | Required | Local JPG, JPEG, PNG, or WebP file |
+| `--prompt` | Garment analysis prompt | Instruction accompanying the image |
+| `--session-id` | `session_structured` | Identifier within the current in-memory run |
+| `--target-margin` | `0.40` | Minimum margin as a fraction strictly between 0 and 1 |
+| `--max-iterations` | `3` | Positive maximum number of research-and-optimization iterations |
+
+The web interface supports targets from 20% to 60% and one to five iterations. Both entry points apply their settings to the actual analysis, not just the displayed labels.
+
+## Cost Model
+
+```text
+fabric cost = price per yard * yards needed
+total cost = fabric cost + estimated labor cost
+profit = comparable retail price - total cost
+margin = profit / comparable retail price
+```
+
+The default minimum margin is 40%. The calculator sets `is_profitable` when the calculated margin meets or exceeds that minimum. A higher margin does not trigger a material upgrade.
+
+Labor uses a configurable-in-code $10/hour heuristic, with base hours by garment type, complexity multipliers, and extra handling time for yardage above three yards. Costs exclude shipping, taxes, trims, overhead, and other production expenses, so this is not an accounting net-profit calculation.
+
+Missing, non-positive, or non-finite fabric prices, yardage, and selling prices are rejected rather than treated as valid quotes. The final report still needs human review.
+
+## Engineering Details
+
+| Area | Implementation |
+| --- | --- |
+| Orchestration | `SequentialAgent`, `ParallelAgent`, and bounded `LoopAgent` |
+| Models | `gemini-2.5-pro` for analysis and optimization; `gemini-2.5-flash` for research |
+| State | ADK `InMemorySessionService` and structured tool outputs |
+| Run isolation | Cloned agent trees and session-specific margin targets |
+| Integrations | Google Search grounding and SerpAPI Shopping through an HTTP tool |
+| Inspection | CLI event output and structured final state; web analysis results |
+| Validation | Offline unit tests, mocked CLI execution, and Streamlit rendering checks |
+
+## Tests
+
 ```bash
-python run.py --image <path>              # Required: path to garment image
-              --prompt <text>             # Optional: custom analysis prompt
-              --session-id <id>           # Optional: session identifier
-              --max-iterations <n>        # Optional: max optimization loops (default: 3)
-              --target-margin <float>     # Optional: target profit margin (default: 0.40)
+python -m unittest discover -s tests -v
+python -m pip check
 ```
 
-**Example:**
-```bash
-python run.py --image data/garments/midi_satin_elegant_evening.jpg
-```
+Tests cover cost arithmetic, custom margin targets, invalid inputs, independent loop settings, CLI validation, and rendering a negative margin. No real API keys or paid API calls are required. These checks do not establish the accuracy of Gemini's garment analysis or the quality of live search results.
 
----
+The pinned direct dependencies were installed together and tested on Python 3.12. The pinned ADK version emits deprecation warnings for its legacy agent combinators; migrating to its newer workflow API is a future task.
 
-## 📁 Project Structure
+## Project Layout
 
-```
-Atelier/
-├── app.py                      # Streamlit web interface
-├── run.py                      # CLI entry point
-├── .env                        # API keys configuration
-├── requirements.txt            # Python dependencies
-│
-├── src/                        # Core application code
-│   ├── __init__.py            # Package exports
-│   ├── agent.py               # Root agent export
-│   ├── planner.py             # AI agent definitions (Analyzer, Sourcer, Market, Optimizer)
-│   ├── executor.py            # Multi-agent workflow orchestration (Sequential, Parallel, Loop)
-│   ├── tools.py               # Profit calculation, SerpAPI integration
-│   └── memory.py              # Agent state management (garment specs, optimization flags)
-│
-└── data/garments/              # Sample garment images for testing
-```
+| Path | Purpose |
+| --- | --- |
+| [app.py](app.py) | Streamlit upload, settings, and results |
+| [run.py](run.py) | CLI validation, execution, and event formatting |
+| [src/planner.py](src/planner.py) | Agent prompts, models, and tool bindings |
+| [src/executor.py](src/executor.py) | Workflow composition and per-run configuration |
+| [src/tools.py](src/tools.py) | Shopping lookup, labor estimate, and profit calculation |
+| [src/memory.py](src/memory.py) | Garment specifications and optimization flags |
+| [data/garments](data/garments) | Included sample inputs |
+| [tests/test_pipeline.py](tests/test_pipeline.py) | Offline regression checks |
 
----
+## Limitations
 
-## 🤖 Agent Details
-
-| Agent | Model | Role | Tools |
-|-------|-------|------|-------|
-| **Analyzer** | Gemini 2.5 Pro | Visual fabric analysis, BOM extraction | `save_garment_specs`, `save_optimization_flag` |
-| **Sourcer** | Gemini 2.5 Flash | Wholesale fabric price research | `google_search` |
-| **Market** | Gemini 2.5 Flash | Retail market price research | `serpapi_google_shopping_market_price` |
-| **Optimizer** | Gemini 2.5 Pro | Profitability calculation & decisions | `calculate_profit`, `save_optimization_flag`, `exit_loop` |
-
----
-
-## 💰 Profit Logic
-
-**Target Margin:** 40% (configurable in `tools.py`)
-
-**Decision Flow:**
-- ✅ **GREENLIGHT** (20%-60% margin): Design is profitable, proceed
-- ⚠️ **MARGIN TOO LOW** (<20%): Loop back, search for cheaper fabric
-- ⬆️ **MARGIN TOO HIGH** (>50%): Loop back, upgrade to premium materials
-
-**Cost Calculation:**
-- Fabric Cost = price_per_yard × yards_needed
-- Labor Cost = estimated hours × $10/hour (based on garment type & complexity)
-- Total Cost = Fabric + Labor
-- Profit Margin = (Selling Price - Total Cost) / Selling Price
-
----
-
-## 🔧 Technical Details
-
-**AI Models:**
-- Primary Analysis: `gemini-2.5-pro` (complex reasoning)
-- Fast Research: `gemini-2.5-flash` (parallel searches)
-
-**Frameworks & APIs:**
-- Google ADK (Agent Development Kit) - Multi-agent orchestration
-- Google Gemini API - Vision and language models
-- SerpAPI - Google Shopping price data
-- Google Search - Fabric wholesale pricing
-
-**Agent Patterns Used:**
-- `SequentialAgent` - Main pipeline orchestration
-- `ParallelAgent` - Concurrent fabric + market research
-- `LoopAgent` - Iterative optimization (max 3 iterations)
-
----
-
-## 📊 Use Cases
-
-**For Fashion Designers:**
-- Pre-production profitability checks
-- Alternative fabric sourcing recommendations
-- Pricing strategy optimization
-
-**For Fashion Schools:**
-- Teaching cost-conscious design principles
-- Business planning for student projects
-
-**For Small Brands:**
-- Fast market validation
-- Competitive pricing analysis
-
----
-
-## 🔍 Garment Specs Captured
-
-The Analyzer agent extracts:
-- `garment_type`: top, bottom, dress, outerwear, accessory
-- `garment_name`: Specific industry terminology
-- `silhouette`: Shape description (A-line, Mermaid, Sheath, etc.)
-- `length`: Mini, Midi, Maxi
-- `sleeves`: Sleeveless, Cap, Long, etc.
-- `neckline`: V-neck, Boat, Cowl, etc.
-- `primary_fabric`: Identified textile (defaults to luxury option if ambiguous)
-- `fabric_confidence`: 0.0-1.0 confidence score
-- `estimated_yardage`: Yards needed + 10% waste buffer
-- `construction_complexity`: Low, Medium, High
-
----
-
-## 📝 License
-
-Apache License 2.0 - See [LICENSE](LICENSE).
-
----
+- Images and prompts are sent to Gemini; search terms are sent to external search providers. Do not upload confidential designs without permission.
+- Image-based fabric identification is approximate. The sourcing prompt permits estimates when results are unclear; a positive number is not proof of a verified supplier quote.
+- Shopping comparisons use US-oriented search defaults. Similar listings may differ in materials, size, quality, or currency; verify comparisons before making decisions.
+- The legacy `trend_status` labels are derived from listing counts, not measured consumer demand.
+- Model output formatting and tool-call behavior remain nondeterministic. Hitting the iteration limit does not guarantee profitability.
+- Sessions are in memory. Authentication, durable storage, production observability, and live-provider integration tests are not included.
 
 ## Project Background
 
-Built for the Agentic AI App Hackathon.
+Built for the Agentic AI App Hackathon. This standalone edition is maintained by [Ankit More](https://github.com/ANKI147) and is based on [NeelGaji/Atelier](https://github.com/NeelGaji/Atelier), branch `agents_v2`.
 
-This standalone portfolio edition is maintained by [Ankit More](https://github.com/ANKI147) and is based on [NeelGaji/Atelier](https://github.com/NeelGaji/Atelier), branch `agents_v2`. The original Git history, contributor attribution, and license are retained.
+Contributor attribution is retained. The standalone history was sanitized to remove a previously committed environment file; affected commit hashes differ from upstream. This README was revised for the standalone edition to document setup, configuration fixes, tests, and limitations.
 
-This README has been updated for the standalone portfolio edition.
-
-**Tech Stack:** Google Gemini API • Google ADK • SerpAPI • Python
+Licensed under [Apache License 2.0](LICENSE). The original license is retained unchanged.

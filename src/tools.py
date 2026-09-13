@@ -1,7 +1,8 @@
-
+"""Modified for the standalone edition: validate costs and use per-session targets."""
 
 from google.adk.tools import ToolContext
 # tools.py
+import math
 import os
 import requests
 from dotenv import load_dotenv
@@ -125,9 +126,25 @@ def calculate_profit(tool_context: ToolContext, labor_cost: Optional[float] = No
     # --- Revenue math (Agent C output) ---
     selling_price = float(market_price.get("average_price", 0) or 0)
 
+    for field, amount in (
+        ("price_per_yard", price_per_yard),
+        ("yards_needed", yards_needed),
+        ("selling_price", selling_price),
+    ):
+        if not math.isfinite(amount) or amount <= 0:
+            raise ValueError(f"{field} must be a positive finite number")
+
+    target_margin = float(tool_context.state.get("target_profit_margin", TARGET_PROFIT_MARGIN))
+    if not math.isfinite(target_margin) or not 0 < target_margin < 1:
+        raise ValueError("target_profit_margin must be between 0 and 1, exclusive")
+
     # --- Labor math (NEW; uses garment specs) ---
     if labor_cost is None:
         labor_cost = _estimate_labor_cost_from_specs(garment_specs, hourly_rate=10.0)
+
+    labor_cost = float(labor_cost)
+    if not math.isfinite(labor_cost) or labor_cost < 0:
+        raise ValueError("labor_cost must be a non-negative finite number")
 
     # --- Profitability ---
     total_cost = round(fabric_total_cost + float(labor_cost), 2)
@@ -141,8 +158,8 @@ def calculate_profit(tool_context: ToolContext, labor_cost: Optional[float] = No
         "selling_price": selling_price,
         "profit": profit,
         "profit_margin_percent": round(margin * 100, 1),
-        "target_margin_percent": TARGET_PROFIT_MARGIN * 100,
-        "is_profitable": margin >= TARGET_PROFIT_MARGIN,
+        "target_margin_percent": target_margin * 100,
+        "is_profitable": margin >= target_margin,
 
         # Optional debug fields (safe to remove):
         "trend_status": market_price.get("trend_status"),

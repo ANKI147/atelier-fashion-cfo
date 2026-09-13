@@ -1,3 +1,5 @@
+"""Modified for the standalone edition: apply per-run settings and handle losses."""
+
 import streamlit as st
 import asyncio
 import json
@@ -79,12 +81,31 @@ def _parse_event_parts(event) -> Tuple[List[Tuple[str, Any]], List[Tuple[str, An
 # --------------------------
 # Async runner
 # --------------------------
-async def run_pipeline(image_bytes: bytes, mime_type: str, prompt: str, session_id: str):
-    from src.executor import root_agent
+async def run_pipeline(
+    image_bytes: bytes,
+    mime_type: str,
+    prompt: str,
+    session_id: str,
+    target_margin: float = 0.40,
+    max_iterations: int = 3,
+):
+    from src.executor import build_root_agent
+
+    if not 0 < target_margin < 1:
+        raise ValueError("target_margin must be between 0 and 1, exclusive")
     
     session_service = InMemorySessionService()
-    await session_service.create_session(app_name=APP_NAME, user_id=USER_ID, session_id=session_id)
-    runner = Runner(agent=root_agent, app_name=APP_NAME, session_service=session_service)
+    await session_service.create_session(
+        app_name=APP_NAME,
+        user_id=USER_ID,
+        session_id=session_id,
+        state={"target_profit_margin": target_margin},
+    )
+    runner = Runner(
+        agent=build_root_agent(max_iterations),
+        app_name=APP_NAME,
+        session_service=session_service,
+    )
     
     events_log = []
     
@@ -157,7 +178,14 @@ with col_preview:
         st.image(uploaded_file, caption="Uploaded Garment", width=200)
 
 if uploaded_file:
-    if st.button("🚀 Analyze Profitability", type="primary", use_container_width=True):
+    if st.button(
+        "🚀 Analyze Profitability",
+        type="primary",
+        use_container_width=True,
+        disabled=not (os.getenv("GOOGLE_API_KEY") and os.getenv("SERPAPI_API_KEY")),
+    ):
+        st.session_state.pop("events_log", None)
+        st.session_state.pop("final_state", None)
         # Get image data
         image_bytes = uploaded_file.getvalue()
         mime_type = f"image/{uploaded_file.type.split('/')[-1]}"
@@ -171,7 +199,14 @@ if uploaded_file:
         with st.spinner("🔄 Running multi-agent analysis..."):
             try:
                 events_log, final_state = asyncio.run(
-                    run_pipeline(image_bytes, mime_type, prompt, session_id)
+                    run_pipeline(
+                        image_bytes,
+                        mime_type,
+                        prompt,
+                        session_id,
+                        target_margin=target_margin / 100,
+                        max_iterations=max_iterations,
+                    )
                 )
                 st.session_state["events_log"] = events_log
                 st.session_state["final_state"] = final_state
@@ -227,7 +262,7 @@ if "final_state" in st.session_state:
                 st.warning(f"⚠️ **NEEDS OPTIMIZATION** - Profit Margin: {margin:.1f}%")
             
             # Progress bar for margin
-            st.progress(min(margin / 100, 1.0))
+            st.progress(max(0.0, min(margin / 100, 1.0)))
             st.caption(f"Target: {pa.get('target_margin_percent', 40)}%")
             
             # Metrics row
