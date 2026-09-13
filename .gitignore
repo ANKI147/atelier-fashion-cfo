@@ -1,5 +1,11 @@
+# Updated for the standalone edition to exclude local credentials and environments.
 .env
-__pycache__
-.vscode
+.env.*
+!.env.example
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.vscode/
 .DS_Store
-.adk
+.adk/

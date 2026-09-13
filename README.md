@@ -232,12 +232,16 @@ The Analyzer agent extracts:
 
 ## 📝 License
 
-MIT License - See LICENSE file
+Apache License 2.0 - See [LICENSE](LICENSE).
 
 ---
 
-## 🤝 Team
+## Project Background
 
-Built for the Agentic AI App Hackathon
+Built for the Agentic AI App Hackathon.
+
+This standalone portfolio edition is maintained by [Ankit More](https://github.com/ANKI147) and is based on [NeelGaji/Atelier](https://github.com/NeelGaji/Atelier), branch `agents_v2`. The original Git history, contributor attribution, and license are retained.
+
+This README has been updated for the standalone portfolio edition.
 
 **Tech Stack:** Google Gemini API • Google ADK • SerpAPI • Python
